@@ -7,7 +7,9 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  TooltipProps,
 } from 'recharts';
+import { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Quote } from '@/lib/types';
 
@@ -16,7 +18,22 @@ interface VoteResultChartProps {
   colors: string[];
 }
 
-const CustomTooltip = ({ active, payload }: any) => {
+interface ChartData {
+  name: string;
+  value: number;
+  author: string;
+}
+
+/**
+ * The props that Recharts provides to the custom tooltip content component.
+ * We are creating a more specific type here to inform TypeScript about the
+ * shape of the nested `payload` object, which contains our original chart data.
+ */
+type CustomTooltipProps = TooltipProps<ValueType, NameType> & {
+  payload?: Array<{ payload: ChartData }>;
+};
+
+const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
@@ -35,7 +52,7 @@ export function VoteResultChart({ quotes, colors }: VoteResultChartProps) {
   const top10Quotes = sortedQuotes.slice(0, 10);
   const otherQuotes = sortedQuotes.slice(10);
 
-  const chartData = top10Quotes.map((quote) => ({
+  const chartData: ChartData[] = top10Quotes.map((quote) => ({
     name: `${quote.author}: "${quote.text.substring(0, 30)}..."`,
     value: quote.votes,
     author: quote.author,

@@ -80,7 +80,7 @@ export default function MyQuotesPage() {
     if (quotes.length === 0) {
       return (
         <div className="text-center border-2 border-dashed border-muted-foreground/50 rounded-lg p-12">
-          <p className="text-muted-foreground">You haven't created any quotes yet.</p>
+          <p className="text-muted-foreground">You haven&apos;t created any quotes yet.</p>
           <Link href="/" passHref>
             <Button variant="link" className="mt-4">
               Go add a quote!

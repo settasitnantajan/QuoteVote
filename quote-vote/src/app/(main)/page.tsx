@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { SignedIn, SignedOut, useAuth, useUser, SignOutButton } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { QuoteCard } from '@/components/quotes/quote-card';
+import Image from 'next/image';
 import { Quote } from '@/lib/types';
 import {
   DropdownMenu,
@@ -315,7 +316,13 @@ export default function HomePage() {
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <div className="flex flex-col items-center gap-2">
-              <img src="https://res.cloudinary.com/dmhuvzk6p/image/upload/v1751365681/QuoteVote_rbxsga.png" alt="QuoteVote Logo" className="h-12 w-12" />
+              <Image
+                src="https://res.cloudinary.com/dmhuvzk6p/image/upload/v1751365681/QuoteVote_rbxsga.png"
+                alt="QuoteVote Logo"
+                width={48}
+                height={48}
+                className="h-12 w-12"
+              />
               <DialogTitle className="text-center text-3xl font-bold">
                 Welcome to QuoteVote!
               </DialogTitle>
@@ -340,9 +347,11 @@ export default function HomePage() {
                 <div className="bg-black p-6 rounded-lg">
                   <blockquote className="text-center text-lg italic text-gray-100">&quot;{slideshowQuotes[currentSlide].text}&quot;</blockquote>
                   <div className="flex items-center justify-center mt-4">
-                    <img
-                      src={slideshowQuotes[currentSlide].avatarUrl}
+                    <Image
+                      src={slideshowQuotes[currentSlide].avatarUrl ?? '/default-avatar.png'}
                       alt={slideshowQuotes[currentSlide].author}
+                      width={32}
+                      height={32}
                       className="h-8 w-8 rounded-full mr-3 border-2 border-gray-500"
                     />
                     <p className="font-semibold text-gray-300">
@@ -439,7 +448,13 @@ export default function HomePage() {
         {/* Top navigation bar */}
         <nav className="flex items-center justify-between p-2 sm:p-4">
           <Link href="/" passHref>
-            <img src="https://res.cloudinary.com/dmhuvzk6p/image/upload/v1751365681/QuoteVote_rbxsga.png" alt="QuoteVote Logo" className="h-8 w-auto cursor-pointer" />
+            <Image
+              src="https://res.cloudinary.com/dmhuvzk6p/image/upload/v1751365681/QuoteVote_rbxsga.png"
+              alt="QuoteVote Logo"
+              width={120}
+              height={32}
+              className="h-8 w-auto cursor-pointer"
+            />
           </Link>
           <div className="flex items-center gap-2">
             {hasUserVoted && (
@@ -458,10 +473,12 @@ export default function HomePage() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">
                   <SignedIn>
-                    <img
-                      src={user?.imageUrl}
-                      alt={user?.fullName || 'User avatar'}
+                    <Image
+                      src={user?.imageUrl ?? '/default-avatar.png'} // Fallback for null/undefined
+                      alt={user?.fullName ?? 'User avatar'}
                       className="h-8 w-8 rounded-full"
+                      width={32}
+                      height={32}
                     />
                   </SignedIn>
                   <SignedOut>

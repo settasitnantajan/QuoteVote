@@ -56,7 +56,7 @@ export function TopQuotesList({ quotes, colors, totalVotes }: TopQuotesListProps
                   </div>
                   <p className="text-sm font-bold">{quote.votes} votes</p>
                 </div>
-                <blockquote className="text-sm pl-2 border-l-2 border-muted">"{quote.text}"</blockquote>
+                <blockquote className="text-sm pl-2 border-l-2 border-muted">&quot;{quote.text}&quot;</blockquote>
                 <div className="flex items-center gap-3">
                   <div className="relative h-3 flex-grow overflow-hidden rounded-full bg-muted">
                     <div

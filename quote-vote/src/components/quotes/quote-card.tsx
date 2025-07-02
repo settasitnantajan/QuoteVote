@@ -124,7 +124,7 @@ export function QuoteCard({ quote, onUpvote, onDelete, isVoted, isToggling = fal
             </AvatarFallback>
           </Avatar>
           <div className="flex-grow">
-            <CardTitle>"{quote.text}"</CardTitle>
+            <CardTitle>&quot;{quote.text}&quot;</CardTitle>
             <CardDescription>- {displayAuthor}</CardDescription>
           </div>
         </div>
