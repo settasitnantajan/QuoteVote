@@ -22,7 +22,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, LogIn, LogOut, Vote, Loader2, User, List, Plus } from 'lucide-react';
+import { ChevronDown, LogOut, Loader2, User, List, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   Carousel,
@@ -329,7 +329,7 @@ export default function HomePage() {
           {/* Slideshow Section */}
           <div className="py-4">
             <h3 className="text-center text-sm font-medium text-muted-foreground mb-4">
-              Here's a glimpse of what you'll find...
+              Here&apos;s a glimpse of what you&apos;ll find...
             </h3>
             <div
               className={`transition-opacity duration-500 ease-in-out ${
@@ -338,9 +338,7 @@ export default function HomePage() {
             >
               {slideshowQuotes.length > 0 && (
                 <div className="bg-black p-6 rounded-lg">
-                  <blockquote className="text-center text-lg italic text-gray-100">
-                    "{slideshowQuotes[currentSlide].text}"
-                  </blockquote>
+                  <blockquote className="text-center text-lg italic text-gray-100">&quot;{slideshowQuotes[currentSlide].text}&quot;</blockquote>
                   <div className="flex items-center justify-center mt-4">
                     <img
                       src={slideshowQuotes[currentSlide].avatarUrl}
