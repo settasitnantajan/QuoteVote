@@ -2,8 +2,11 @@ export interface Quote {
     id: string;
     text: string;
     author: string;
-    upvotes: number;
+    votes: number;
     createdAt: Date;
-    userImage?: string;
+    updatedAt: Date;
+    avatarUrl?: string;
+    isVoted?: boolean;
+    createdBy?: string;
   }
   

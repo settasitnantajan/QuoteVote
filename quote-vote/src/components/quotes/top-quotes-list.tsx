@@ -24,7 +24,7 @@ const getInitials = (name: string) => {
 
 export function TopQuotesList({ quotes, colors, totalVotes }: TopQuotesListProps) {
   const topQuotes = [...quotes]
-    .sort((a, b) => b.upvotes - a.upvotes)
+    .sort((a, b) => b.votes - a.votes)
     .slice(0, 10);
 
   if (topQuotes.length === 0) {
@@ -39,7 +39,7 @@ export function TopQuotesList({ quotes, colors, totalVotes }: TopQuotesListProps
       <CardContent>
         <ul className="space-y-6">
           {topQuotes.map((quote, index) => {
-            const percentage = totalVotes > 0 ? (quote.upvotes / totalVotes) * 100 : 0;
+            const percentage = totalVotes > 0 ? (quote.votes / totalVotes) * 100 : 0;
             const barColor = colors[index % colors.length];
             return (
               <li key={quote.id} className="space-y-2">
@@ -49,12 +49,12 @@ export function TopQuotesList({ quotes, colors, totalVotes }: TopQuotesListProps
                       #{index + 1}
                     </span>
                     <Avatar className="h-9 w-9 border">
-                      <AvatarImage src={quote.userImage} alt={quote.author} />
+                      <AvatarImage src={quote.avatarUrl} alt={quote.author} />
                       <AvatarFallback>{getInitials(quote.author)}</AvatarFallback>
                     </Avatar>
                     <p className="font-medium text-sm">{quote.author}</p>
                   </div>
-                  <p className="text-sm font-bold">{quote.upvotes} votes</p>
+                  <p className="text-sm font-bold">{quote.votes} votes</p>
                 </div>
                 <blockquote className="text-sm pl-2 border-l-2 border-muted">"{quote.text}"</blockquote>
                 <div className="flex items-center gap-3">

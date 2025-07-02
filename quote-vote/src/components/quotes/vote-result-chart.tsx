@@ -31,20 +31,20 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 export function VoteResultChart({ quotes, colors }: VoteResultChartProps) {
-  const sortedQuotes = [...quotes].sort((a, b) => b.upvotes - a.upvotes);
+  const sortedQuotes = [...quotes].sort((a, b) => b.votes - a.votes);
   const top10Quotes = sortedQuotes.slice(0, 10);
   const otherQuotes = sortedQuotes.slice(10);
 
   const chartData = top10Quotes.map((quote) => ({
     name: `${quote.author}: "${quote.text.substring(0, 30)}..."`,
-    value: quote.upvotes,
+    value: quote.votes,
     author: quote.author,
   }));
 
   // Group the rest of the quotes into an "Others" category for a cleaner chart
   if (otherQuotes.length > 0) {
     const otherVotes = otherQuotes.reduce(
-      (sum, quote) => sum + quote.upvotes,
+      (sum, quote) => sum + quote.votes,
       0
     );
     chartData.push({

@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { SignedIn, SignedOut, useAuth, useUser, SignOutButton } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { QuoteCard } from '@/components/quotes/quote-card';
 import { Quote } from '@/lib/types';
@@ -21,7 +22,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, User, LogIn, LogOut, Vote, Loader2 } from 'lucide-react';
+import { ChevronDown, LogIn, LogOut, Vote, Loader2, User, List, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   Carousel,
@@ -30,118 +31,15 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from '@/components/ui/carousel';
+import { Textarea } from '@/components/ui/textarea';
 import Autoplay from 'embla-carousel-autoplay';
 import Link from 'next/link';
 import { Label } from '@/components/ui/label';
-import { LoadingSkeleton } from '@/components/LoadingSkeleton'; // Import the new component
-
-// Mock data - ในโปรเจกต์จริง ข้อมูลนี้จะมาจาก API
-const mockQuotes: Quote[] = [
-  {
-    id: '1',
-    text: 'The only way to do great work is to love what you do.',
-    author: 'Steve Jobs',
-    upvotes: 152,
-    userImage: 'https://i.pravatar.cc/40?u=steve-jobs',
-    createdAt: new Date('2023-10-26T00:00:00Z'),
-  },
-  {
-    id: '2',
-    text: 'Life is what happens when you\'re busy making other plans.',
-    author: 'John Lennon',
-    upvotes: 240,
-    userImage: 'https://i.pravatar.cc/40?u=john-lennon',
-    createdAt: new Date('2023-10-25T00:00:00Z'),
-  },
-  {
-    id: '3',
-    text: 'Strive not to be a success, but rather to be of value.',
-    author: 'Albert Einstein',
-    upvotes: 310,
-    userImage: 'https://i.pravatar.cc/40?u=albert-einstein',
-    createdAt: new Date('2023-10-24T00:00:00Z'),
-  },
-  {
-    id: '4',
-    text: 'The way to get started is to quit talking and begin doing.',
-    author: 'Walt Disney',
-    upvotes: 450,
-    userImage: 'https://i.pravatar.cc/40?u=walt-disney',
-    createdAt: new Date('2023-11-01T00:00:00Z'),
-  },
-  {
-    id: '5',
-    text: 'Your time is limited, so don\'t waste it living someone else\'s life.',
-    author: 'Steve Jobs',
-    upvotes: 280,
-    userImage: 'https://i.pravatar.cc/40?u=steve-jobs',
-    createdAt: new Date('2023-11-05T00:00:00Z'),
-  },
-  {
-    id: '6',
-    text: 'Tell me and I forget. Teach me and I remember. Involve me and I learn.',
-    author: 'Benjamin Franklin',
-    upvotes: 199,
-    userImage: 'https://i.pravatar.cc/40?u=benjamin-franklin',
-    createdAt: new Date('2023-11-10T00:00:00Z'),
-  },
-  {
-    id: '7',
-    text: 'It is during our darkest moments that we must focus to see the light.',
-    author: 'Aristotle',
-    upvotes: 520,
-    userImage: 'https://i.pravatar.cc/40?u=aristotle',
-    createdAt: new Date('2023-11-12T00:00:00Z'),
-  },
-  {
-    id: '8',
-    text: 'Whoever is happy will make others happy too.',
-    author: 'Anne Frank',
-    upvotes: 333,
-    userImage: 'https://i.pravatar.cc/40?u=anne-frank',
-    createdAt: new Date('2023-11-15T00:00:00Z'),
-  },
-  {
-    id: '9',
-    text: 'You will face many defeats in life, but never let yourself be defeated.',
-    author: 'Maya Angelou',
-    upvotes: 610,
-    userImage: 'https://i.pravatar.cc/40?u=maya-angelou',
-    createdAt: new Date('2023-11-18T00:00:00Z'),
-  },
-  {
-    id: '10',
-    text: 'The greatest glory in living lies not in never falling, but in rising every time we fall.',
-    author: 'Nelson Mandela',
-    upvotes: 750,
-    userImage: 'https://i.pravatar.cc/40?u=nelson-mandela',
-    createdAt: new Date('2023-11-20T00:00:00Z'),
-  },
-  {
-    id: '11',
-    text: 'The future belongs to those who believe in the beauty of their dreams.',
-    author: 'Eleanor Roosevelt',
-    upvotes: 480,
-    userImage: 'https://i.pravatar.cc/40?u=eleanor-roosevelt',
-    createdAt: new Date('2023-11-22T00:00:00Z'),
-  },
-  {
-    id: '12',
-    text: 'You must be the change you wish to see in the world.',
-    author: 'Mahatma Gandhi',
-    upvotes: 820,
-    userImage: 'https://i.pravatar.cc/40?u=mahatma-gandhi',
-    createdAt: new Date('2023-11-25T00:00:00Z'),
-  },
-  {
-    id: '13',
-    text: 'In the end, it\'s not the years in your life that count. It\'s the life in your years.',
-    author: 'Abraham Lincoln',
-    upvotes: 555,
-    userImage: 'https://i.pravatar.cc/40?u=abraham-lincoln',
-    createdAt: new Date('2023-11-28T00:00:00Z'),
-  },
-];
+import { LoadingSkeleton } from '@/components/LoadingSkeleton';
+import { getQuotes, voteForQuote, unvoteForQuote, createQuote, deleteQuote } from '@/lib/api'; // Import API functions
+import { useDebounce } from '@/hooks/useDebounce';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 type SortOption = 'date_desc' | 'date_asc';
 
@@ -154,80 +52,217 @@ export default function HomePage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOption, setSortOption] = useState<SortOption>('date_desc');
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [quotes, setQuotes] = useState<Quote[]>(mockQuotes);
-  const [votedIds, setVotedIds] = useState<Set<string>>(new Set());
-  const [quoteToVote, setQuoteToVote] = useState<Quote | null>(null);
-  const [isVoting, setIsVoting] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); // Add loading state
-  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(true);
+  const debouncedSearchTerm = useDebounce(searchTerm, 500); // 500ms delay
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+
+  const { isSignedIn, getToken } = useAuth();
+  const { user } = useUser();
+
+  const [togglingVoteId, setTogglingVoteId] = useState<string | null>(null);
+  const [quoteToConfirm, setQuoteToConfirm] = useState<Quote | null>(null);
+  const [quoteToDelete, setQuoteToDelete] = useState<Quote | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newQuoteText, setNewQuoteText] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
   const [countdown, setCountdown] = useState(30);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isFading, setIsFading] = useState(false);
+  const prevIsSignedIn = useRef(isSignedIn);
 
   const autoplayPlugin = useRef(
     Autoplay({ delay: 3000, stopOnInteraction: true, stopOnMouseEnter: true })
   );
 
-  const slideshowQuotes = useMemo(
-    () => [mockQuotes[9], mockQuotes[11], mockQuotes[12]], // Pick a few impactful quotes
-    []
+  const featuredQuotes = useMemo(
+    () => [...quotes].sort((a, b) => b.votes - a.votes).slice(0, 5),
+    [quotes]
   );
 
-  const featuredQuotes = useMemo(() => {
-    // Shuffle the array and take the first 5 for the slideshow
-    return [...mockQuotes].sort(() => 0.5 - Math.random()).slice(0, 5);
-  }, []);
+  // Derived state to check if the logged-in user has voted for any quote.
+  const hasUserVoted = useMemo(() => {
+    if (!isSignedIn) {
+      return false;
+    }
+    return quotes.some(q => q.isVoted);
+  }, [quotes, isSignedIn]);
 
-  const handleVoteConfirm = () => {
-    if (!quoteToVote || votedIds.has(quoteToVote.id) || isVoting) {
-      setQuoteToVote(null);
+  // The welcome modal can show a few of the featured quotes
+  const slideshowQuotes = featuredQuotes.slice(0, 3);
+
+  // This function contains the core logic for casting a vote.
+  // It's called either directly or after a confirmation.
+  const executeVote = async (quote: Quote) => {
+    if (togglingVoteId) return;
+    setTogglingVoteId(quote.id);
+    try {
+      const token = await getToken();
+      if (!token) throw new Error("Authentication token not available.");
+
+      await voteForQuote(quote.id, token);
+      toast.success('Vote successful! Redirecting to summary...');
+      // Redirect to the summary page after a short delay to allow the user to see the toast
+      setTimeout(() => router.push('/summary'), 1500);
+    } catch (error) {
+      console.error('Vote failed:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to vote.');
+      setTogglingVoteId(null);
+    }
+  };
+
+  const handleVoteToggle = async (quote: Quote) => {
+    if (!isSignedIn) {
+      router.push('/sign-in');
       return;
     }
 
-    setIsVoting(true);
-
-    const votedQuoteId = quoteToVote.id;
-    setQuotes((currentQuotes) =>
-      currentQuotes.map((q) =>
-        q.id === votedQuoteId ? { ...q, upvotes: q.upvotes + 1 } : q
-      )
-    );
-    setVotedIds((prevIds) => new Set(prevIds).add(votedQuoteId));
-    setQuoteToVote(null);
-
-    setTimeout(() => {
-      router.push('/summary');
-      setIsVoting(false);
-    }, 1000); // 1 second delay
+    // Prevent multiple clicks while a vote is in progress
+    if (togglingVoteId) return;
+    
+    if (quote.isVoted) {
+      // --- UN-VOTE LOGIC ---
+      // User is un-voting the currently voted quote. Do it instantly.
+      setTogglingVoteId(quote.id);
+      // Optimistic update for instant feedback
+      setQuotes(currentQuotes =>
+        currentQuotes.map(q =>
+          q.id === quote.id ? { ...q, votes: q.votes - 1, isVoted: false } : q
+        )
+      );
+      try {
+        const token = await getToken();
+        if (!token) {
+          toast.error('Authentication token not available.');
+          throw new Error('Token not found');
+        }
+        const updatedQuote = await unvoteForQuote(quote.id, token);
+        // Re-sync with server state to ensure data consistency
+        setQuotes(currentQuotes =>
+          currentQuotes.map(q => (q.id === updatedQuote.id ? updatedQuote : q))
+        );
+        toast.info('Vote removed.');
+      } catch (error) {
+        console.error('Unvote failed:', error);
+        toast.error(error instanceof Error ? error.message : 'Failed to remove vote.');
+        // Revert on failure by refetching all quotes
+        fetchQuotes();
+      } finally {
+        setTogglingVoteId(null);
+      }
+    } else {
+      // --- VOTE LOGIC ---
+      // Check if the user already has a vote on another quote.
+      const hasExistingVote = quotes.some(q => q.isVoted);
+      if (hasExistingVote) {
+        setQuoteToConfirm(quote); // Open confirmation dialog
+      } else {
+        await executeVote(quote); // It's their first vote, proceed directly
+      }
+    }
   };
 
-  const { sortedQuotes } = useMemo(() => {
-    // 1. Filter by search term
-    const filtered = quotes.filter(
-      (quote) =>
-        quote.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        quote.author.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    // 2. Sort for the main display list
-    const sorted = [...filtered];
-    switch (sortOption) {
-      case 'date_asc':
-        sorted.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-        break;
-      case 'date_desc':
-      default:
-        sorted.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  const handleConfirmVoteChange = async () => {
+    if (quoteToConfirm) {
+      await executeVote(quoteToConfirm);
     }
+    setQuoteToConfirm(null); // Close dialog
+  };
 
-    return { sortedQuotes: sorted };
-  }, [searchTerm, sortOption, quotes]);
+  const handleConfirmDelete = async () => {
+    if (!quoteToDelete) return;
 
-  // Simulate loading (replace with your actual data fetching)
+    setIsDeleting(true);
+    try {
+      const token = await getToken();
+      if (!token) throw new Error('Authentication is required to delete a quote.');
+
+      await deleteQuote(quoteToDelete.id, token);
+
+      toast.success('Your quote has been deleted.');
+      // Remove the quote from the local state to update the UI instantly
+      setQuotes(prevQuotes => prevQuotes.filter(q => q.id !== quoteToDelete.id));
+      setQuoteToDelete(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete quote.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCreateQuote = async () => {
+    if (!newQuoteText.trim()) {
+      toast.error('Quote cannot be empty.');
+      return;
+    }
+    setIsCreating(true);
+    try {
+      const token = await getToken();
+      if (!token) throw new Error('Authentication is required to create a quote.');
+
+      await createQuote({ text: newQuoteText }, token);
+
+      toast.success('Your quote has been successfully added!');
+      setIsCreateModalOpen(false);
+      setNewQuoteText('');
+      fetchQuotes(); // Refresh the list to show the new quote
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to create quote.');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  // Fetch quotes from the backend
+  const fetchQuotes = useCallback(async () => {
+    console.log(`[API] Fetching quotes... Search: "${debouncedSearchTerm}", Sort: "${sortOption}"`);
+    setIsLoading(true);
+    try {
+      const token = isSignedIn ? await getToken() : null;
+      const fetchedQuotes = await getQuotes(debouncedSearchTerm, sortOption, token);
+      // Convert createdAt string from API to Date object
+      const quotesWithDateObjects = fetchedQuotes.map((q) => ({
+        ...q,
+        createdAt: typeof q.createdAt === 'string' ? new Date(q.createdAt) : q.createdAt,
+        updatedAt: q.updatedAt && typeof q.updatedAt === 'string' ? new Date(q.updatedAt) : q.updatedAt,
+      }));
+      console.log('[API] Successfully fetched', quotesWithDateObjects.length, 'quotes.');
+      setQuotes(quotesWithDateObjects);
+    } catch (error) {
+      console.error('[API] Failed to fetch quotes:', error);
+      // Handle error state in UI
+    } finally {
+      setIsLoading(false);
+    }
+  }, [debouncedSearchTerm, sortOption, isSignedIn, getToken]);
+
   useEffect(() => {
-    setTimeout(() => setIsLoading(false), 500); // Adjust the duration as needed
+    fetchQuotes();
+  }, [fetchQuotes]);
+
+  useEffect(() => {
+    console.log('[HomePage] Component mounted.');
   }, []);
+
+  useEffect(() => {
+    if (isSignedIn && user) {
+      console.log(`[Auth] User signed in: ${user.fullName} (ID: ${user.id})`);
+    } else if (prevIsSignedIn.current && !isSignedIn) {
+      console.log('[Auth] User signed out.');
+    }
+    // Update the ref to the current state for the next render
+    prevIsSignedIn.current = isSignedIn;
+  }, [isSignedIn, user]);
+
+  // This effect runs once on mount to check if it's the user's first visit.
+  useEffect(() => {
+    const hasVisited = localStorage.getItem('hasVisitedQuoteVote');
+    if (!hasVisited) {
+      setIsWelcomeModalOpen(true);
+      localStorage.setItem('hasVisitedQuoteVote', 'true');
+    }
+  }, []); // Empty dependency array ensures it runs only once on the client.
 
   // Show welcome modal on first load with a 30-second countdown
   useEffect(() => {
@@ -263,7 +298,18 @@ export default function HomePage() {
   }, [isWelcomeModalOpen, slideshowQuotes.length]);
 
   return (
-    <main className="min-h-screen bg-[#FEF0D0] py-8">
+    <main className="min-h-screen bg-gradient-to-b from-blue-900 to-green-900 text-gray-200 py-8">
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
       <div className="container mx-auto">
       <Dialog open={isWelcomeModalOpen} onOpenChange={setIsWelcomeModalOpen}>
         <DialogContent className="sm:max-w-2xl">
@@ -291,17 +337,17 @@ export default function HomePage() {
               }`}
             >
               {slideshowQuotes.length > 0 && (
-                <div className="bg-muted/50 p-6 rounded-lg border">
-                  <blockquote className="text-center text-lg italic">
+                <div className="bg-black p-6 rounded-lg">
+                  <blockquote className="text-center text-lg italic text-gray-100">
                     "{slideshowQuotes[currentSlide].text}"
                   </blockquote>
                   <div className="flex items-center justify-center mt-4">
                     <img
-                      src={slideshowQuotes[currentSlide].userImage}
+                      src={slideshowQuotes[currentSlide].avatarUrl}
                       alt={slideshowQuotes[currentSlide].author}
-                      className="h-8 w-8 rounded-full mr-3"
+                      className="h-8 w-8 rounded-full mr-3 border-2 border-gray-500"
                     />
-                    <p className="font-semibold text-foreground">
+                    <p className="font-semibold text-gray-300">
                       {slideshowQuotes[currentSlide].author}
                     </p>
                   </div>
@@ -314,130 +360,182 @@ export default function HomePage() {
             <p className="text-sm text-muted-foreground">
               Closing in {countdown}s...
             </p>
-            <Button
-              onClick={() => setIsWelcomeModalOpen(false)}
-              className="w-fit"
-              size="lg"
-            >
-              Get Started Now
-            </Button>
+            {/* The "Get Started" button was here. It can be re-added if needed. */}
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isLoginModalOpen} onOpenChange={setIsLoginModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Log In</DialogTitle>
-            <DialogDescription>
-              Enter your credentials to access your account.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="email" className="text-right">
-                Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="name@example.com"
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="password" className="text-right">
-                Password
-              </Label>
-              <Input id="password" type="password" className="col-span-3" />
-            </div>
-          </div>
-          <DialogFooter className="flex-col gap-2 pt-2">
-            <div>
-              <Button type="submit" className="w-full" onClick={() => setIsLoginModalOpen(false)}>
-                Log In
-              </Button>
-            </div>
-            <p className="text-center text-sm text-muted-foreground">
-              Don't have an account?{' '}
-              <Button
-                variant="link"
-                className="p-0 h-auto font-semibold text-primary"
-              >
-                Sign up
-              </Button>
-            </p>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!quoteToVote} onOpenChange={(isOpen) => !isOpen && setQuoteToVote(null)}>
+      {/* Confirmation Dialog for changing a vote */}
+      <Dialog open={!!quoteToConfirm} onOpenChange={(isOpen) => !isOpen && setQuoteToConfirm(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm Your Vote</DialogTitle>
+            <DialogTitle>Confirm Your Vote Change</DialogTitle>
             <DialogDescription>
-              You can only vote for each quote once. This action cannot be undone.
+              You can only have one active vote. Voting for this quote will remove your previous vote. Are you sure?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setQuoteToVote(null)} disabled={isVoting}>
+            <Button variant="outline" onClick={() => setQuoteToConfirm(null)} disabled={!!togglingVoteId}>
               Cancel
             </Button>
-            <Button onClick={handleVoteConfirm} disabled={isVoting}>
-              {isVoting && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              {isVoting ? 'Voting...' : 'Confirm Vote'}
+            <Button onClick={handleConfirmVoteChange} disabled={!!togglingVoteId}>
+              {togglingVoteId === quoteToConfirm?.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {togglingVoteId === quoteToConfirm?.id ? 'Changing...' : 'Confirm Change'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <div className="relative mb-8">
-        {/* Add Logo Here */}
-        <div className="absolute top-4 left-4">
+      {/* Dialog for deleting a quote */}
+      <Dialog open={!!quoteToDelete} onOpenChange={(isOpen) => !isOpen && setQuoteToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Are you absolutely sure?</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete this quote.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQuoteToDelete(null)} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete} disabled={isDeleting}>
+              {isDeleting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Deleting...</> : 'Delete Quote'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog for creating a new quote */}
+      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Your Quote</DialogTitle>
+            <DialogDescription>
+              Share some wisdom with the world. Your quote will be published under your name.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="quote-text">Quote</Label>
+              <Textarea
+                id="quote-text"
+                value={newQuoteText}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewQuoteText(e.target.value)}
+                placeholder="The journey of a thousand miles begins with a single step."
+                className="min-h-[100px]"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateModalOpen(false)} disabled={isCreating}>Cancel</Button>
+            <Button onClick={handleCreateQuote} disabled={isCreating || !newQuoteText.trim()}>
+              {isCreating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</> : 'Submit Quote'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Header Section: Refactored for better responsiveness */}
+      <header className="mb-8">
+        {/* Top navigation bar */}
+        <nav className="flex items-center justify-between p-2 sm:p-4">
           <Link href="/" passHref>
-              <img src="https://res.cloudinary.com/dmhuvzk6p/image/upload/v1751365681/QuoteVote_rbxsga.png" alt="QuoteVote Logo" className="h-8 w-auto" />
+            <img src="https://res.cloudinary.com/dmhuvzk6p/image/upload/v1751365681/QuoteVote_rbxsga.png" alt="QuoteVote Logo" className="h-8 w-auto cursor-pointer" />
           </Link>
-        </div>
-
-
-        <div className="absolute top-0 right-0">
           <div className="flex items-center gap-2">
-            <Link href="/summary" passHref>
-              <Button variant="ghost" size="icon" aria-label="Vote summary">
-                <Vote className="h-10 w-10" />
-              </Button>
-            </Link>
+            {hasUserVoted && (
+              <Link href="/summary" passHref>
+                <Button
+                  variant="ghost"
+                  aria-label="Vote summary"
+                  className="bg-gradient-to-r from-red-500 to-yellow-500 bg-clip-text text-transparent font-semibold hover:bg-red-500/5"
+                >
+                  Vote Summary
+                </Button>
+              </Link>
+            )}
+            {/* User Dropdown Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="User menu">
-                  <User className="h-10 w-10" />
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <SignedIn>
+                    <img
+                      src={user?.imageUrl}
+                      alt={user?.fullName || 'User avatar'}
+                      className="h-8 w-8 rounded-full"
+                    />
+                  </SignedIn>
+                  <SignedOut>
+                    <User className="h-6 w-6" />
+                  </SignedOut>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Welcome, User</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => setIsLoginModalOpen(true)}>
-                  <LogIn className="mr-2 h-4 w-4" />
-                  <span>Log In</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log Out</span>
-                </DropdownMenuItem>
+              <DropdownMenuContent align="end" className="w-64">
+                <SignedIn>
+                  <DropdownMenuLabel>
+                    Welcome, {user?.username || user?.fullName}!
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {user && (
+                    <>
+                      <DropdownMenuLabel className="font-normal">
+                        <div className="flex flex-col space-y-1">
+                          <p className="text-sm font-medium leading-none">{user.fullName}</p>
+                          <p className="text-xs leading-none text-muted-foreground">
+                            {user.primaryEmailAddress?.emailAddress}
+                          </p>
+                        </div>
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <Link href="/my-quotes">
+                      <List className="mr-2 h-4 w-4" />
+                      <span>My Quotes</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <SignOutButton>
+                    <DropdownMenuItem className="cursor-pointer">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Log out</span>
+                    </DropdownMenuItem>
+                  </SignOutButton>
+                </SignedIn>
+                <SignedOut>
+                  <DropdownMenuItem asChild className="cursor-pointer"><Link href="/sign-up">Sign Up</Link></DropdownMenuItem>
+                  <DropdownMenuItem asChild className="cursor-pointer"><Link href="/sign-in">Log In</Link></DropdownMenuItem>
+                </SignedOut>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        </div>
-        <div className="flex flex-col items-center gap-4">
-          <h1 className="text-4xl font-bold text-center">QuoteVote</h1>
-          <div className="flex w-full max-w-lg flex-col gap-2 sm:flex-row">
+        </nav>
+
+        {/* Main hero content */}
+        <div className="flex flex-col items-center gap-4 pt-8 text-center">
+          <SignedIn>
+            <h2 className="text-xl font-semibold sm:text-2xl bg-gradient-to-r from-cyan-400 to-lime-400 bg-clip-text text-transparent">
+              Welcome, {user?.fullName}!
+            </h2>
+          </SignedIn>
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+            <h1 className="text-4xl font-bold sm:text-5xl bg-gradient-to-r from-red-500 to-yellow-500 bg-clip-text text-transparent">
+              QuoteVote
+            </h1>
+            <SignedIn>
+              <Button onClick={() => setIsCreateModalOpen(true)} variant="destructive" className="transition-transform hover:scale-105">
+                <Plus className="mr-2 h-4 w-4" /> Add Quote
+              </Button>
+            </SignedIn>
+          </div>
+          <div className="mt-4 flex w-full max-w-lg flex-col gap-2 px-4 sm:flex-row sm:px-0">
             <Input
               type="text"
               placeholder="Search quotes..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
               className="w-full"
             />
             <DropdownMenu>
@@ -463,7 +561,7 @@ export default function HomePage() {
             </DropdownMenu>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Featured Quotes Slideshow */}
       {!isLoading && (
@@ -480,15 +578,17 @@ export default function HomePage() {
             className="w-full max-w-6xl mx-auto"
           >
             <CarouselContent className="-ml-4">
-              {featuredQuotes.map((quote) => (
+              {featuredQuotes.map((quote, index) => (
                 <CarouselItem
-                  key={`featured-${quote.id}`}
+                  key={`featured-${quote.id || index}`}
                   className="pl-4 md:basis-1/2 lg:basis-1/3"
                 >
                   <QuoteCard
                     quote={quote}
-                    onUpvote={() => setQuoteToVote(quote)}
-                    isVoted={votedIds.has(quote.id)}
+                    onUpvote={handleVoteToggle}
+                    onDelete={setQuoteToDelete}
+                    isVoted={!!quote.isVoted}
+                    isToggling={togglingVoteId === quote.id}
                   />
                 </CarouselItem>
               ))}
@@ -500,24 +600,30 @@ export default function HomePage() {
       )}
 
       {/* Loading skeleton */}
-      {isLoading && (
-        <div className="fixed inset-0 z-50"><LoadingSkeleton /></div>
-      )}
-
-      {/* Main content: Quote list */}
-      <h2 className="text-3xl font-bold text-center mb-6">
+      {isLoading ? (
+        <LoadingSkeleton />
+      ) : quotes.length > 0 ? (
+        <>
+          {/* Main content: Quote list */}
+          <h2 className="text-3xl font-bold text-center mb-6">
             Vote your favorite quotes!
           </h2>
-      <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {sortedQuotes.map((quote) => (
-          <QuoteCard
-            key={quote.id}
-            quote={quote}
-            onUpvote={() => setQuoteToVote(quote)}
-            isVoted={votedIds.has(quote.id)}
-          />
-        ))}
-      </div>
+          <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {quotes.map((quote, index) => (
+              <QuoteCard
+                key={quote.id || `quote-${index}`}
+                quote={quote}
+                onUpvote={handleVoteToggle}
+                onDelete={setQuoteToDelete}
+                isVoted={!!quote.isVoted}
+                isToggling={togglingVoteId === quote.id}
+              />
+            ))}
+          </div>
+        </>
+      ) : (
+        <p className="text-center text-gray-400 mt-8">No quotes found. Try a different search!</p>
+      )}
       </div>
     </main>
   );

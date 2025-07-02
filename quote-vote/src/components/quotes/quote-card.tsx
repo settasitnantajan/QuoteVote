@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useUser } from '@clerk/nextjs';
 import { Quote } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,10 +23,12 @@ import {
   Heart,
   Share2,
   Twitter,
+  Loader2,
   Facebook,
   Link as LinkIcon,
   Copy,
   Check,
+  Trash2,
 } from 'lucide-react';
 import {
   Avatar,
@@ -36,12 +39,22 @@ import {
 interface QuoteCardProps {
   quote: Quote;
   onUpvote: (quote: Quote) => void;
+  onDelete: (quote: Quote) => void;
   isVoted: boolean;
+  isToggling?: boolean;
 }
 
-export function QuoteCard({ quote, onUpvote, isVoted }: QuoteCardProps) {
+export function QuoteCard({ quote, onUpvote, onDelete, isVoted, isToggling = false }: QuoteCardProps) {
   const [copiedItem, setCopiedItem] = useState<'link' | 'text' | null>(null);
   const [formattedDate, setFormattedDate] = useState('');
+  const { user } = useUser();
+  
+  // Determine if the current user is the author of the quote.
+  const isAuthor = user && quote.createdBy === user.id;
+
+  // Use the most up-to-date info from Clerk for the author's own quotes, otherwise use the data from the quote object.
+  const displayAuthor = isAuthor ? user.fullName || quote.author : quote.author;
+  const displayAvatarUrl = isAuthor ? user.imageUrl : quote.avatarUrl;
 
   // Format the date only on the client-side to avoid hydration mismatch.
   useEffect(() => {
@@ -105,14 +118,14 @@ export function QuoteCard({ quote, onUpvote, isVoted }: QuoteCardProps) {
       <CardHeader>
         <div className="flex items-start gap-4">
           <Avatar className="h-10 w-10 border">
-            <AvatarImage src={quote.userImage} alt={quote.author} />
+            <AvatarImage src={displayAvatarUrl} alt={displayAuthor} />
             <AvatarFallback>
-              {getInitials(quote.author)}
+              {getInitials(displayAuthor)}
             </AvatarFallback>
           </Avatar>
           <div className="flex-grow">
             <CardTitle>"{quote.text}"</CardTitle>
-            <CardDescription>- {quote.author}</CardDescription>
+            <CardDescription>- {displayAuthor}</CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -126,22 +139,39 @@ export function QuoteCard({ quote, onUpvote, isVoted }: QuoteCardProps) {
             variant={isVoted ? 'secondary' : 'outline'}
             size="icon"
             onClick={() => onUpvote(quote)}
-            disabled={isVoted}
+            disabled={isToggling}
+            className="transition-transform hover:scale-110"
             aria-pressed={isVoted}
           >
-            <Heart
-              className={`h-4 w-4 ${isVoted ? 'text-red-500 fill-red-500' : ''}`}
-            />
+            {isToggling ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Heart
+                className={`h-4 w-4 ${isVoted ? 'text-red-500 fill-red-500' : ''}`}
+              />
+            )}
           </Button>
-          <span className="font-bold text-lg">{quote.upvotes}</span>
+          {/* <span className="font-bold text-lg">{quote.votes}</span> */}
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon" aria-label="Share quote">
+            <Button variant="outline" size="icon" aria-label="Share quote" className="transition-transform hover:scale-110">
               <Share2 className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            {isAuthor && (
+              <>
+                <DropdownMenuItem
+                  className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                  onSelect={() => onDelete(quote)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  <span>Delete Quote</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
             <DropdownMenuItem onSelect={() => handleShare('twitter')}>
               <Twitter className="mr-2 h-4 w-4" />
               <span>Share on X</span>
